@@ -1683,8 +1683,8 @@ const CTOK=(()=>{const m={};const d=(n,s)=>{m[n]=s.split(",")};
  d("Invocador","Doram");d("Animista","Doram,SpiritHandler,4th");
  return m})();
 const clsTok=()=>{const c=mc();const n=c&&c.profile&&c.profile.classe;return n&&CTOK[n]?CTOK[n]:null};
-const HKEY={Topo:"topo",Meio:"meio",Baixo:"baixo"};
-function headMulti(id){try{const raw=(BASE.desc&&BASE.desc[id])||(typeof DESC!=="undefined"&&DESC[id])||"";const m=raw.match(/Equipa em:\s*([^\n]*)/);if(!m)return null;const ks=[];m[1].replace(/Topo|Meio|Baixo/g,x=>{if(ks.indexOf(HKEY[x])<0)ks.push(HKEY[x])});return ks.length>1?ks:null}catch(e){return null}}
+const HKEY={topo:"topo",meio:"meio",baixo:"baixo"};
+function headMulti(id){try{const raw=(BASE.desc&&BASE.desc[id])||(typeof DESC!=="undefined"&&DESC[id])||"";const m=raw.match(/Equipa em:\s*([^\n]*)/);if(!m)return null;const ks=[];m[1].replace(/Topo|Meio|Baixo/gi,x=>{x=HKEY[x.toLowerCase()];if(ks.indexOf(x)<0)ks.push(x)});return ks.length>1?ks:null}catch(e){return null}}
 function allowedFor(id){const mt=BASE.meta&&BASE.meta.get(id),tk=clsTok();if(!mt||!tk)return true;
   if(mt.nu&&mt.nu.some(x=>tk.indexOf(x)>=0))return false;
   return !mt.u||mt.u.some(x=>tk.indexOf(x)>=0)}
