@@ -1683,6 +1683,8 @@ const CTOK=(()=>{const m={};const d=(n,s)=>{m[n]=s.split(",")};
  d("Invocador","Doram");d("Animista","Doram,SpiritHandler,4th");
  return m})();
 const clsTok=()=>{const c=mc();const n=c&&c.profile&&c.profile.classe;return n&&CTOK[n]?CTOK[n]:null};
+const HKEY={Topo:"topo",Meio:"meio",Baixo:"baixo"};
+function headMulti(id){try{const raw=(BASE.desc&&BASE.desc[id])||(typeof DESC!=="undefined"&&DESC[id])||"";const m=raw.match(/Equipa em:\s*([^\n]*)/);if(!m)return null;const ks=[];m[1].replace(/Topo|Meio|Baixo/g,x=>{if(ks.indexOf(HKEY[x])<0)ks.push(HKEY[x])});return ks.length>1?ks:null}catch(e){return null}}
 function allowedFor(id){const mt=BASE.meta&&BASE.meta.get(id),tk=clsTok();if(!mt||!tk)return true;
   if(mt.nu&&mt.nu.some(x=>tk.indexOf(x)>=0))return false;
   return !mt.u||mt.u.some(x=>tk.indexOf(x)>=0)}
@@ -1705,7 +1707,7 @@ function setBase(o){
       else if(sb===0&&c>=0){const cm=c===0?2:c;Object.keys(CMASK).forEach(k=>{if(cm&CMASK[k])BASE.cards[k].push([id,r[1],""])})}}
     else if(ty===9){const k=COSM[r[7]];if(k)BASE.eq[k].push(e)}
     else if(ty===10){const k=SHSUB[r[7]];if(k)BASE.eq[k].push(e)}
-    else if((ty===1||ty===2)&&r[3])Object.keys(LOCM).forEach(k=>{if(LOCM[k].indexOf(r[3])>=0)BASE.eq[k].push(e)})});
+    else if((ty===1||ty===2)&&r[3]){const hm=(ty===2&&/^(Upper|Middle|Lower)$/.test(r[3]))?headMulti(id):null;if(hm)hm.forEach(k=>BASE.eq[k].push(e));else Object.keys(LOCM).forEach(k=>{if(LOCM[k].indexOf(r[3])>=0)BASE.eq[k].push(e)})}});
   BASE.ok=true;BASE.n=o.items.length;NMAP=null;return true}
 const IDB={open(){return new Promise((res,rej)=>{if(typeof indexedDB==="undefined"){rej(new Error("sem IndexedDB"));return}const r=indexedDB.open("ro-codice",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})},
   async get(k){try{const d=await this.open();return await new Promise(res=>{const q=d.transaction("kv").objectStore("kv").get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>res(null)})}catch(e){return null}},
@@ -1852,7 +1854,7 @@ const norm=s=>String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").tr
 const lines=v=>String(v).split(/\n/).map(x=>x.trim()).filter(Boolean);
 function uniq(c,name,exceptId){let n=name,i=2;while(G(c).sets.some(s=>s.id!==exceptId&&norm(s.name)===norm(n)))n=name+" ("+i++ +")";return n}
 function nextName(c){let i=G(c).sets.length+1;while(G(c).sets.some(s=>norm(s.name)==="set "+i))i++;return "Set "+i}
-function fmtSet(s){return SLOTS.filter(x=>s.slots[x[0]]&&s.slots[x[0]].n).map(x=>{const it=s.slots[x[0]];return tl(x[0])+": "+(it.ref?"+"+it.ref+" ":"")+it.n+(it.cards.length?" | cartas: "+it.cards.join(", "):"")+(it.ench.length?" | encantos: "+it.ench.join(", "):"")+((it.opts||[]).length?" | opções: "+it.opts.join(", "):"")}).join("\n")}
+function fmtSet(s){return SLOTS.filter(x=>s.slots[x[0]]&&s.slots[x[0]].n&&!s.slots[x[0]].lk).map(x=>{const it=s.slots[x[0]];return tl(x[0])+": "+(it.ref?"+"+it.ref+" ":"")+it.n+(it.cards.length?" | cartas: "+it.cards.join(", "):"")+(it.ench.length?" | encantos: "+it.ench.join(", "):"")+((it.opts||[]).length?" | opções: "+it.opts.join(", "):"")}).join("\n")}
 function parseSet(txt){
   const res={};
   txt.split(/\n/).forEach(l=>{
@@ -1865,7 +1867,7 @@ function parseSet(txt){
 function tile(s,k){
   const it=s.slots[k];
   return '<button class="slot'+(M.slot===k?" on":"")+'" data-slot="'+k+'" type="button"><div class="sl">'+esc(SL[k])+'</div>'
-   +(it&&it.n?'<div class="si" '+(it.id?'data-tipid="'+it.id+'"':'data-tipn="'+esc(it.n)+'"')+'>'+(it.ref?'<span class="rf">+'+it.ref+'</span>':'')+(it.gr?'<span class="rf">'+esc(it.gr)+'</span>':'')+esc(it.n)+(it.sl?" ["+it.sl+"]":"")+'</div>'+((it.cards.length||it.ench.length||(it.opts||[]).length)?'<div class="tags">'+it.cards.map(x=>'<span class="tg sc" data-tipn="'+esc(x)+'">'+esc(x)+'</span>').join("")+it.ench.map(x=>'<span class="tg se" data-tipn="'+esc(x)+'">'+esc(x)+'</span>').join("")+(it.opts||[]).map(x=>'<span class="tg se">'+esc(x)+'</span>').join("")+'</div>':""):'<div class="si em">vazio</div>')+'</button>'}
+   +(it&&it.lk?'<div class="si" style="opacity:.75;font-style:italic" '+(it.id?'data-tipid="'+it.id+'"':'')+'>'+esc(it.n)+' <span class="small">(ocupa também '+esc(SL[it.lk])+')</span></div>':it&&it.n?'<div class="si" '+(it.id?'data-tipid="'+it.id+'"':'data-tipn="'+esc(it.n)+'"')+'>'+(it.ref?'<span class="rf">+'+it.ref+'</span>':'')+(it.gr?'<span class="rf">'+esc(it.gr)+'</span>':'')+esc(it.n)+(it.sl?" ["+it.sl+"]":"")+'</div>'+((it.cards.length||it.ench.length||(it.opts||[]).length)?'<div class="tags">'+it.cards.map(x=>'<span class="tg sc" data-tipn="'+esc(x)+'">'+esc(x)+'</span>').join("")+it.ench.map(x=>'<span class="tg se" data-tipn="'+esc(x)+'">'+esc(x)+'</span>').join("")+(it.opts||[]).map(x=>'<span class="tg se">'+esc(x)+'</span>').join("")+'</div>':""):'<div class="si em">vazio</div>')+'</button>'}
 function doll(s,part){const L=COLS[part][0],R=COLS[part][1];return '<div class="doll">'+L.map((k,i)=>tile(s,k)+tile(s,R[i])).join("")+'</div>'}
 function fld(l,inner){return '<div class="fld"><label class="small">'+l+'</label>'+inner+'</div>'}
 function setBar(c,s){
@@ -1941,7 +1943,7 @@ function descBonus(id){if(!id)return{};if(BPC.has(id))return BPC.get(id);const r
   BPC.set(id,o);return o}
 function bonusSources(c){const out={},add=(k,l,v)=>{if(!v)return;(out[k]=out[k]||[]).push({l:l,v:v})};
   const why={};jobBonus(c,why);Object.keys(why).forEach(k=>why[k].forEach(r=>add(k,r.l,r.v)));
-  const s=curSet(c);if(s&&s.slots)Object.keys(s.slots).forEach(sk=>{const it=s.slots[sk];if(!it||!it.n)return;
+  const s=curSet(c);if(s&&s.slots)Object.keys(s.slots).forEach(sk=>{const it=s.slots[sk];if(!it||!it.n||it.lk)return;
     const ad=(id,nm,lab)=>{const b=descBonus(id);Object.keys(b).forEach(k=>add(k,lab,b[k]))};
     ad(it.id||idByName(it.n),it.n,it.n);
     (it.cards||[]).forEach(n=>{if(n)ad(idByName(n),n,n+" (carta, "+it.n+")")});(it.ench||[]).forEach(n=>{if(n)ad(idByName(n),n,n+" (encanto, "+it.n+")")});(it.opts||[]).forEach(n=>{const b=optBonus(n);Object.keys(b).forEach(k=>add(k,n+" (opção, "+it.n+")",b[k]))})});
@@ -2031,7 +2033,7 @@ function renderSub(){
    +'<div class="row" style="margin-top:10px"><button class="btn pri" data-act="slotsave" type="button">Aplicar</button><button class="btn" data-act="slotback" type="button">Trocar item</button><button class="btn" data-act="slotclear" type="button">Esvaziar slot</button></div></div></div>';
   el.hidden=false;if(fs>=0){sfFill();try{const f=$("#sf");f.focus();f.setSelectionRange(f.value.length,f.value.length)}catch(e){}}
 }
-function openSlot(k){M.slot=k;M.q="";M.fs=-1;const it=curSet(mc()).slots[k];if(it&&it.n){M.draft={id:it.id||0,n:it.n,ref:it.ref|0,gr:it.gr||"",sl:it.sl!=null?it.sl:Math.min(4,it.cards.length),cards:it.cards.slice(),ench:it.ench.slice(),opts:(it.opts||[]).slice()};M.view="edit"}else{M.draft=null;M.view="list"}}
+function openSlot(k){{const a=curSet(mc()).slots[k];if(a&&a.lk)k=a.lk}M.slot=k;M.q="";M.fs=-1;const it=curSet(mc()).slots[k];if(it&&it.n){M.draft={id:it.id||0,n:it.n,ref:it.ref|0,gr:it.gr||"",sl:it.sl!=null?it.sl:Math.min(4,it.cards.length),cards:it.cards.slice(),ench:it.ench.slice(),opts:(it.opts||[]).slice()};M.view="edit"}else{M.draft=null;M.view="list"}}
 function ptName(id,cb){if(!id)return;if(PT[id]){cb(PT[id]);return}if(!S.key)return;dpResolve(id).then(j=>{if(j&&j.name){PT[id]=j.name;try{localStorage.setItem('ro-pt',JSON.stringify(PT))}catch(e){}cb(j.name)}}).catch(()=>{})}
 function pickItem(id){const it=byId(id);if(!it)return;M.fs=-1;M.draft={id:id,n:dn(it),ref:0,gr:"",sl:Math.min(4,it[2]),cards:[],ench:[],opts:[]};M.view="edit";renderSub();
   ptName(id,nm=>{if(M.draft&&M.draft.id===id){M.draft.n=nm;const i=$("#sl-n");if(i)i.value=nm}})}
@@ -2041,7 +2043,7 @@ function sfFill(){const inp=$("#sf"),box=$("#sf-list");if(!inp||!box)return;cons
   box.innerHTML=(kind==="e"&&q&&BASE.v<5?'<button class="opt" data-sfuse="1" type="button"><b>Usar texto digitado</b> <span class="small">"'+esc(q)+'"</span></button>':"")
    +res.map(r=>'<button class="opt" data-tapick="'+r[0]+'" data-tipid="'+r[0]+'" data-kind="'+kind+'" data-i="'+i+'" type="button"><span>'+esc(dn(r))+'</span><span class="small">ID '+r[0]+'</span></button>').join("")
    +(!res.length&&!(kind==="e"&&q&&BASE.v<4)?'<div class="small" style="padding:6px 8px">'+(kind==="e"&&!q?"Digite para buscar encantamentos.":"Nenhum resultado.")+'</div>':"")}
-function applySlot(){try{const c=mc(),s=curSet(c),d=M.draft;if(d&&d.n&&d.n.trim())s.slots[M.slot]={n:d.n.trim(),id:d.id||0,ref:(noRef(M.slot)||(itemMeta(d)&&!itemMeta(d).rf))?0:Math.min(maxRef(M.slot),d.ref|0),gr:(noRef(M.slot)||isSh(M.slot)||(itemMeta(d)&&!itemMeta(d).g))?"":d.gr||"",sl:d.sl|0,cards:d.cards.filter(x=>x&&x.trim()),ench:d.ench.filter(x=>x&&x.trim()),opts:(d.opts||[]).slice(0,optN(d)).filter(x=>x&&x.trim())};else delete s.slots[M.slot];M.slot=null;M.draft=null;save();renderModal()}catch(e){toast("Erro ao salvar o slot: "+e.message);console.error(e)}}
+function applySlot(){try{const c=mc(),s=curSet(c),d=M.draft;Object.keys(s.slots).forEach(q=>{if(s.slots[q]&&s.slots[q].lk===M.slot)delete s.slots[q]});if(d&&d.n&&d.n.trim())s.slots[M.slot]={n:d.n.trim(),id:d.id||0,ref:(noRef(M.slot)||(itemMeta(d)&&!itemMeta(d).rf))?0:Math.min(maxRef(M.slot),d.ref|0),gr:(noRef(M.slot)||isSh(M.slot)||(itemMeta(d)&&!itemMeta(d).g))?"":d.gr||"",sl:d.sl|0,cards:d.cards.filter(x=>x&&x.trim()),ench:d.ench.filter(x=>x&&x.trim()),opts:(d.opts||[]).slice(0,optN(d)).filter(x=>x&&x.trim())};else delete s.slots[M.slot];{const hm=(d&&d.id)?headMulti(d.id):null;if(hm&&hm.indexOf(M.slot)>=0&&s.slots[M.slot])hm.forEach(q=>{if(q!==M.slot)s.slots[q]={n:d.n.trim(),id:d.id,ref:0,gr:"",sl:0,cards:[],ench:[],opts:[],lk:M.slot}})}M.slot=null;M.draft=null;save();renderModal()}catch(e){toast("Erro ao salvar o slot: "+e.message);console.error(e)}}
 function modalClick(T){
   let el;const c=mc();if(!c)return false;
   if(T.id==="sub"){if(M.view==="edit"&&M.draft&&M.draft.n&&M.draft.n.trim()){applySlot();toast("Item aplicado")}else{M.slot=null;M.draft=null;renderModal()}return true}
@@ -2059,7 +2061,7 @@ function modalClick(T){
   if(a==="slotsave"){applySlot();return true}
   if(a==="slotcustom"){M.fs=-1;M.draft={id:0,n:(M.q||"").trim(),ref:0,gr:"",sl:0,cards:[],ench:[],opts:[]};M.view="edit";renderSub();return true}
   if(a==="slotback"){M.view="list";M.q="";renderSub();return true}
-  if(a==="slotclear"){delete s.slots[M.slot];M.slot=null;save();renderModal();return true}
+  if(a==="slotclear"){Object.keys(s.slots).forEach(q=>{if(s.slots[q]&&s.slots[q].lk===M.slot)delete s.slots[q]});delete s.slots[M.slot];M.slot=null;save();renderModal();return true}
   if(a==="slotcancel"){M.slot=null;renderModal();return true}
   if(a==="setnew"){const id="s"+Date.now().toString(36),nm=($("#newset").value||"").trim();G(c).sets.push({id:id,name:nm?uniq(c,nm):nextName(c),slots:{}});G(c).cur=id;M.pend=false;save();renderModal();return true}
   if(a==="setdup"){const id="s"+Date.now().toString(36);G(c).sets.push({id:id,name:uniq(c,s.name+" (cópia)"),slots:JSON.parse(JSON.stringify(s.slots))});G(c).cur=id;save();renderModal();return true}
