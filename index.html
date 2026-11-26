@@ -2013,7 +2013,7 @@ function renderSub(){
   const c=mc(),el=$("#sub");if(!c||!M.slot){el.hidden=true;el.innerHTML="";return}
   const head='<div class="mhead"><h2>'+esc(tl(M.slot))+'</h2><button class="btn" data-act="slotcancel" type="button">Fechar</button></div>';
   if(M.view==="list"){
-    el.innerHTML='<div class="mbox" style="max-width:560px;margin-top:50px">'+head+'<div class="mbody"><input class="inp" id="sl-q" placeholder="Filtrar por nome ou ID (nomes em inglês)..." value="'+esc(M.q||"")+'" autocomplete="off">'+(BASE.ok&&BASE.v>=5&&clsTok()?'<label class="small" style="display:block;margin-top:6px"><input type="checkbox" id="sl-cls"'+(M.onlyCls!==false?" checked":"")+'> Somente itens que a classe '+esc(mc().profile.classe)+' pode equipar</label>':'')+'<div class="olist" id="sl-list">'+listHtml()+'</div>'
+    el.innerHTML='<div class="mbox" style="max-width:560px;margin-top:50px">'+head+'<div class="mbody">'+(M.draft&&M.draft.n?'<div class="row" style="margin-bottom:8px;align-items:center"><span class="small" style="flex:1">Atual: <b>'+esc(M.draft.n)+'</b></span><button class="btn pri" data-act="slotedit" type="button">Editar item atual</button></div>':'')+'<input class="inp" id="sl-q" placeholder="Filtrar por nome ou ID (nomes em inglês)..." value="'+esc(M.q||"")+'" autocomplete="off">'+(BASE.ok&&BASE.v>=5&&clsTok()?'<label class="small" style="display:block;margin-top:6px"><input type="checkbox" id="sl-cls"'+(M.onlyCls!==false?" checked":"")+'> Somente itens que a classe '+esc(mc().profile.classe)+' pode equipar</label>':'')+'<div class="olist" id="sl-list">'+listHtml()+'</div>'
      +'<div class="row" style="margin-top:8px"><button class="btn" data-act="slotclear" type="button">Esvaziar slot</button></div></div></div>';
     el.hidden=false;try{$("#sl-q").focus()}catch(e){}return}
   const d=M.draft,sl=Math.max(0,Math.min(4,d.sl|0)),fs=M.fs==null?-1:M.fs;
@@ -2033,9 +2033,9 @@ function renderSub(){
    +'<div class="row" style="margin-top:10px"><button class="btn pri" data-act="slotsave" type="button">Aplicar</button><button class="btn" data-act="slotback" type="button">Trocar item</button><button class="btn" data-act="slotclear" type="button">Esvaziar slot</button></div></div></div>';
   el.hidden=false;if(fs>=0){sfFill();try{const f=$("#sf");f.focus();f.setSelectionRange(f.value.length,f.value.length)}catch(e){}}
 }
-function openSlot(k){{const a=curSet(mc()).slots[k];if(a&&a.lk)k=a.lk}M.slot=k;M.q="";M.fs=-1;const it=curSet(mc()).slots[k];if(it&&it.n){M.draft={id:it.id||0,n:it.n,ref:it.ref|0,gr:it.gr||"",sl:it.sl!=null?it.sl:Math.min(4,it.cards.length),cards:it.cards.slice(),ench:it.ench.slice(),opts:(it.opts||[]).slice()};M.view="edit"}else{M.draft=null;M.view="list"}}
+function openSlot(k){{const a=curSet(mc()).slots[k];if(a&&a.lk)k=a.lk}M.slot=k;M.q="";M.fs=-1;const it=curSet(mc()).slots[k];if(it&&it.n){M.draft={id:it.id||0,n:it.n,ref:it.ref|0,gr:it.gr||"",sl:it.sl!=null?it.sl:Math.min(4,it.cards.length),cards:it.cards.slice(),ench:it.ench.slice(),opts:(it.opts||[]).slice()};M.view="list"}else{M.draft=null;M.view="list"}}
 function ptName(id,cb){if(!id)return;if(PT[id]){cb(PT[id]);return}if(!S.key)return;dpResolve(id).then(j=>{if(j&&j.name){PT[id]=j.name;try{localStorage.setItem('ro-pt',JSON.stringify(PT))}catch(e){}cb(j.name)}}).catch(()=>{})}
-function pickItem(id){const it=byId(id);if(!it)return;M.fs=-1;M.draft={id:id,n:dn(it),ref:0,gr:"",sl:Math.min(4,it[2]),cards:[],ench:[],opts:[]};M.view="edit";renderSub();
+function pickItem(id){const it=byId(id);if(!it)return;const had=M.draft&&M.draft.n&&curSet(mc()).slots[M.slot];M.fs=-1;M.draft={id:id,n:dn(it),ref:0,gr:"",sl:Math.min(4,it[2]),cards:[],ench:[],opts:[]};if(had){applySlot();return}M.view="edit";renderSub();
   ptName(id,nm=>{if(M.draft&&M.draft.id===id){M.draft.n=nm;const i=$("#sl-n");if(i)i.value=nm}})}
 function sfFill(){const inp=$("#sf"),box=$("#sf-list");if(!inp||!box)return;const kind=inp.dataset.kind,i=inp.dataset.i,q=inp.value.trim();
   if(kind==="o"){const r=searchOpt(q);M.oRes=r;box.innerHTML=r.map((s,j)=>'<button class="opt" data-opick="'+j+'" type="button"><span>'+esc(s)+'</span></button>').join("")+(!r.length?'<div class="small" style="padding:6px 8px">'+(q?"Nenhuma opção encontrada.":"Digite para buscar (ex.: conj, HP, P. Raça, FOR).")+'</div>':"");return}
@@ -2060,6 +2060,7 @@ function modalClick(T){
   const a=T.dataset&&T.dataset.act,s=curSet(c);
   if(a==="slotsave"){applySlot();return true}
   if(a==="slotcustom"){M.fs=-1;M.draft={id:0,n:(M.q||"").trim(),ref:0,gr:"",sl:0,cards:[],ench:[],opts:[]};M.view="edit";renderSub();return true}
+  if(a==="slotedit"){M.view="edit";renderSub();return true}
   if(a==="slotback"){M.view="list";M.q="";renderSub();return true}
   if(a==="slotclear"){Object.keys(s.slots).forEach(q=>{if(s.slots[q]&&s.slots[q].lk===M.slot)delete s.slots[q]});delete s.slots[M.slot];M.slot=null;save();renderModal();return true}
   if(a==="slotcancel"){M.slot=null;renderModal();return true}
