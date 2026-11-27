@@ -166,6 +166,14 @@ textarea.inp{min-height:70px;resize:vertical;font:inherit}
 .slot .sc{color:var(--sct);border-color:var(--scb)}
 .slot .se{color:var(--set);border-style:dashed}
 .slot .rf{display:inline-block;font-size:11px;padding:1px 6px;margin-right:5px;border-radius:6px;border:1px solid var(--sbd);background:var(--stg);color:var(--set)}
+.slot.ed{cursor:default}.slot.ed:hover{box-shadow:none;border-color:var(--sbd)}
+.slot.ed .sl{display:flex;justify-content:space-between;align-items:center}
+.slot.ed .xs{background:none;border:0;color:var(--smut);cursor:pointer;font:inherit;padding:0 4px}
+.slot.ed .acw{position:relative;margin-top:4px}
+.slot.ed .acw .inp{width:100%;font-size:12.5px;min-height:34px;padding:5px 8px}
+.slot.ed .acl{position:absolute;left:0;right:0;top:100%;z-index:60;margin-top:2px;max-height:min(300px,45vh);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.slot.ed .pills{gap:6px}.slot.ed .pill{padding:3px 6px;min-height:32px;font-size:12.5px}
+.slot.ed.aux{opacity:.8;font-style:italic}
 .slot .em{color:var(--sem)}
 .figure{grid-column:2;grid-row:1/6;border:1px dashed var(--line);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px;color:var(--mut);font-size:13px}
 .figure b{font-family:Georgia,serif;color:var(--ink);font-size:15px}
@@ -1864,10 +1872,28 @@ function parseSet(txt){
     parts.slice(1).forEach(p=>{const mm=p.match(/^(cartas?|c|encantos?|encantamentos?|e)\s*:\s*(.*)$/i);if(!mm)return;const arr=mm[2].split(/[,;]/).map(x=>x.trim()).filter(Boolean);if(/^c/i.test(mm[1]))it.cards=arr;else it.ench=arr});
     if(it.n){it.sl=Math.min(4,it.cards.length);res[sl[0]]=it}});
   return res}
+function wslot(k,fn){const o=[M.slot,M.draft],it=curSet(mc()).slots[k];M.slot=k;M.draft=it&&it.n?it:null;try{return fn(it)}finally{M.slot=o[0];M.draft=o[1]}}
 function tile(s,k){
-  const it=s.slots[k];
-  return '<button class="slot'+(M.slot===k?" on":"")+'" data-slot="'+k+'" type="button"><div class="sl">'+esc(SL[k])+'</div>'
-   +(it&&it.lk?'<div class="si" style="opacity:.75;font-style:italic" '+(it.id?'data-tipid="'+it.id+'"':'')+'>'+esc(it.n)+' <span class="small">(ocupa também '+esc(SL[it.lk])+')</span></div>':it&&it.n?'<div class="si" '+(it.id?'data-tipid="'+it.id+'"':'data-tipn="'+esc(it.n)+'"')+'>'+(it.ref?'<span class="rf">+'+it.ref+'</span>':'')+(it.gr?'<span class="rf">'+esc(it.gr)+'</span>':'')+esc(it.n)+(it.sl?" ["+it.sl+"]":"")+'</div>'+((it.cards.length||it.ench.length||(it.opts||[]).length)?'<div class="tags">'+it.cards.map(x=>'<span class="tg sc" data-tipn="'+esc(x)+'">'+esc(x)+'</span>').join("")+it.ench.map(x=>'<span class="tg se" data-tipn="'+esc(x)+'">'+esc(x)+'</span>').join("")+(it.opts||[]).map(x=>'<span class="tg se">'+esc(x)+'</span>').join("")+'</div>':""):'<div class="si em">vazio</div>')+'</button>'}
+  const it=s.slots[k],lab=esc(SL[k]);
+  if(it&&it.lk)return '<div class="slot ed aux"><div class="sl">'+lab+'</div><div class="si aux-n">'+esc(it.n)+' <span class="small">(ocupa também '+esc(SL[it.lk])+')</span></div></div>';
+  let h='<div class="slot ed" data-sk="'+k+'"><div class="sl">'+lab+(it&&it.n?'<button class="xs" data-clr="item" data-sk="'+k+'" type="button" title="Esvaziar slot" aria-label="Esvaziar slot">x</button>':'')+'</div>'
+   +'<div class="acw"><input class="inp ac" data-ac="item" data-sk="'+k+'" value="'+esc(it?it.n:"")+'" placeholder="Buscar item..." autocomplete="off"'+(it&&it.id?' data-tipid="'+it.id+'"':'')+'><div class="acl olist" hidden></div></div>';
+  if(it&&it.n){
+    h+=wslot(k,()=>{
+      let r="";const mt=itemMeta(it),sl=Math.max(0,Math.min(4,it.sl|0));
+      if(!(noRef(k)||(mt&&!mt.rf))){
+        r+='<select class="pill" data-f="ref" data-sk="'+k+'" title="Refinamento">';for(let q=0;q<=maxRef(k);q++)r+='<option value="'+q+'"'+(q===(it.ref|0)?" selected":"")+'>+'+q+'</option>';r+='</select>';
+        if(!(isSh(k)||(mt&&!mt.g)))r+='<select class="pill" data-f="gr" data-sk="'+k+'" title="Grau"><option value="">Grau</option>'+["D","C","B","A"].map(g=>'<option value="'+g+'"'+(it.gr===g?" selected":"")+'>Grau '+g+'</option>').join("")+'</select>'}
+      if(!it.id)r+='<select class="pill" data-f="sl" data-sk="'+k+'" title="Slots de carta">'+[0,1,2,3,4].map(n=>'<option value="'+n+'"'+(sl===n?" selected":"")+'>['+n+']</option>').join("")+'</select>';
+      else if(sl)r+='<span class="small">['+sl+']</span>';
+      let o=r?'<div class="pills" style="margin-top:6px">'+r+'</div>':"";
+      const f=(kind,i,v,ph)=>'<div class="acw"><input class="inp ac" data-ac="'+kind+'" data-sk="'+k+'" data-i="'+i+'" value="'+esc(v||"")+'" placeholder="'+ph+'" autocomplete="off"'+(v?' data-tipn="'+esc(v)+'"':'')+'><div class="acl olist" hidden></div></div>';
+      for(let q=0;q<sl;q++)o+=f("c",q,it.cards[q],"Carta "+(q+1));
+      for(let q=sl;q<4;q++){const e=q-sl;if(enchAllow(it,q)===false){if(q===sl&&e===0)o+='<div class="small" style="margin-top:6px">Este equipamento não aceita encantamento.</div>';break}o+=f("e",e,it.ench[e],"Encantamento "+(e+1))}
+      const nO=optN(it);for(let q=0;q<nO;q++)o+=f("o",q,(it.opts||[])[q],"Opção aleatória "+(q+1));
+      return o});
+  }
+  return h+'</div>'}
 function doll(s,part){const L=COLS[part][0],R=COLS[part][1];return '<div class="doll">'+L.map((k,i)=>tile(s,k)+tile(s,R[i])).join("")+'</div>'}
 function fld(l,inner){return '<div class="fld"><label class="small">'+l+'</label>'+inner+'</div>'}
 function setBar(c,s){
@@ -1893,7 +1919,7 @@ function renderModal(){
      +'<section class="attsec"><div class="atthd"><h3>Atributos e talentos</h3><span class="small">Pontos calculados pelo nível e pela classe acima</span></div>'+attHtml(c)+'</section>';
   }else if(M.tab==="eq"){
     const s=curSet(c);
-    h=setBar(c,s)+'<div class="chips" style="margin-bottom:10px">'+[["eq","Normal"],["sh","Sombrio"]].map(x=>'<button class="chip'+(M.part===x[0]?" on":"")+'" data-part="'+x[0]+'" type="button">'+x[1]+'</button>').join("")+'</div>'+doll(s,M.part)+'<div class="small">Clique em um slot para informar o item, as cartas e os encantamentos.</div>';
+    h=setBar(c,s)+'<div class="chips" style="margin-bottom:10px">'+[["eq","Normal"],["sh","Sombrio"]].map(x=>'<button class="chip'+(M.part===x[0]?" on":"")+'" data-part="'+x[0]+'" type="button">'+x[1]+'</button>').join("")+'</div>'+doll(s,M.part)+'<div class="small">Digite no campo de cada slot para escolher o item; refino, cartas e encantamentos aparecem logo abaixo.</div>';
     h+='<div class="row" style="margin-top:10px"><button class="btn" data-act="impshow" type="button">'+(M.imp?"Ocultar importação":"Inserir set completo (texto)")+'</button><button class="btn" data-act="setcopy" type="button">Copiar set como texto</button></div>';
     if(M.imp)h+='<div class="sum">'+fld("Nome do novo set",'<input class="inp" id="imp-n" maxlength="30" placeholder="Ex.: Set de crítico">')
       +fld("Um slot por linha",'<textarea class="inp" id="imp-t" style="min-height:130px" placeholder="'+"Veste: Nome do item | cartas: Carta A, Carta B | encantos: Encanto 1, Encanto 2\nArma: Nome da arma | cartas: Carta C\nLuva (sombrio): Nome do item sombrio"+'"></textarea>')
@@ -2030,7 +2056,7 @@ function renderSub(){
    +'<div class="sgrid">'+bx+'</div>'+pn
    +(enchTuple(d)===false?'<div class="small" style="margin-top:8px">Segundo o simulador, este equipamento não aceita encantamentos.</div>':'')
    +'<div class="small" style="margin-top:8px">'+(d.id?'ID '+d.id+' · ':'')+'Os primeiros slots são de carta (conforme o número entre colchetes); os demais, de encantamento.'+(nO?' As opções aleatórias vêm depois.':'')+'</div>'
-   +'<div class="row" style="margin-top:10px"><button class="btn pri" data-act="slotsave" type="button">Aplicar</button><button class="btn" data-act="slotback" type="button">Trocar item</button><button class="btn" data-act="slotclear" type="button">Esvaziar slot</button></div></div></div>';
+   +'<div class="row" style="margin-top:10px"><button class="btn pri" data-act="slotsave" type="button">OK</button><button class="btn" data-act="slotback" type="button">Trocar item</button><button class="btn" data-act="slotclear" type="button">Esvaziar slot</button></div></div></div>';
   el.hidden=false;if(fs>=0){sfFill();try{const f=$("#sf");f.focus();f.setSelectionRange(f.value.length,f.value.length)}catch(e){}}
 }
 function openSlot(k){{const a=curSet(mc()).slots[k];if(a&&a.lk)k=a.lk}M.slot=k;M.q="";M.fs=-1;const it=curSet(mc()).slots[k];if(it&&it.n){M.draft={id:it.id||0,n:it.n,ref:it.ref|0,gr:it.gr||"",sl:it.sl!=null?it.sl:Math.min(4,it.cards.length),cards:it.cards.slice(),ench:it.ench.slice(),opts:(it.opts||[]).slice()};M.view="list"}else{M.draft=null;M.view="list"}}
@@ -2233,6 +2259,54 @@ sideSet();setHH();
 applyTheme(S.theme);
 render();setHH();
 
+
+/* ===== Edição inline dos slots (sem modal) ===== */
+(function(){
+const rr=()=>{const y=window.scrollY;renderModal();window.scrollTo(0,y)};
+const gs=k=>curSet(mc()).slots[k];
+const compact=a=>(a||[]).filter(x=>x&&String(x).trim());
+function rows(inp){const k=inp.dataset.sk,kind=inp.dataset.ac,q=inp.value,i=+inp.dataset.i;
+  return wslot(k,it=>{
+    if(kind==="item"){M.q=q;const res=searchEq(k,q).slice(0,50);
+      return (q.trim()?'<button class="opt" data-acpick="custom" type="button"><b>Usar texto digitado</b> <span class="small">"'+esc(q.trim())+'"</span></button>':"")
+       +(SC[k]||(BASE.ok&&BASE.eq[k])?'':'<div class="small" style="padding:6px 8px">Este slot não tem lista de itens; digite e use o texto.</div>')
+       +res.map(r=>'<button class="opt" data-acpick="item" data-id="'+r[0]+'" data-tipid="'+r[0]+'" type="button"><span>'+esc(dn(r))+(r[2]?' ['+r[2]+']':'')+(ptn(r[0])?' <span class="small">'+esc(r[1])+'</span>':'')+'</span><span class="small">ID '+r[0]+(r[4]?' · Nv. '+r[4]:'')+'</span></button>').join("")
+       +(SC[k]&&!res.length?'<div class="small" style="padding:6px 8px">Nenhum item encontrado.</div>':'')}
+    if(kind==="o"){const r=searchOpt(q);return r.map((s,j)=>'<button class="opt" data-acpick="o" data-j="'+j+'" type="button"><span>'+esc(s)+'</span></button>').join("")+(!r.length?'<div class="small" style="padding:6px 8px">'+(q?"Nenhuma opção encontrada.":"Digite para buscar (ex.: conj, HP, FOR).")+'</div>':"")}
+    const sl=Math.max(0,Math.min(4,(it&&it.sl)|0)),res=searchTa(kind,k,q,kind==="e"?enchAllow(it,sl+i):undefined);
+    return (kind==="e"&&q.trim()&&BASE.v<5?'<button class="opt" data-acpick="txt" type="button"><b>Usar texto digitado</b> <span class="small">"'+esc(q.trim())+'"</span></button>':"")
+     +res.map(r=>'<button class="opt" data-acpick="'+kind+'" data-id="'+r[0]+'" data-tipid="'+r[0]+'" type="button"><span>'+esc(dn(r))+'</span><span class="small">ID '+r[0]+'</span></button>').join("")
+     +(!res.length&&!(kind==="e"&&q.trim()&&BASE.v<5)?'<div class="small" style="padding:6px 8px">'+(kind==="e"&&!q.trim()?"Digite para buscar encantamentos.":"Nenhum resultado.")+'</div>':"")})}
+function show(inp){const b=inp.parentNode.querySelector(".acl");if(!b)return;b.innerHTML=rows(inp);b.hidden=false}
+function hideAll(except){document.querySelectorAll(".acl").forEach(b=>{if(b!==except){b.hidden=true}})}
+function stored(inp){const k=inp.dataset.sk,it=gs(k),kind=inp.dataset.ac,i=+inp.dataset.i;if(!it)return"";return kind==="item"?it.n:kind==="c"?(it.cards[i]||""):kind==="e"?(it.ench[i]||""):((it.opts||[])[i]||"")}
+document.addEventListener("focusin",e=>{const T=e.target;if(!T.classList||!T.classList.contains("ac"))return;hideAll(T.parentNode.querySelector(".acl"));if(T.dataset.ac==="item")T.select();show(T)});
+document.addEventListener("input",e=>{const T=e.target;if(T.classList&&T.classList.contains("ac"))show(T)});
+document.addEventListener("mousedown",e=>{if(e.target.closest&&e.target.closest(".acl"))e.preventDefault()});
+document.addEventListener("focusout",e=>{const T=e.target;if(!T.classList||!T.classList.contains("ac"))return;setTimeout(()=>{const w=T.parentNode;if(!w||w.contains(document.activeElement))return;const b=w.querySelector(".acl");if(b)b.hidden=true;if(!document.body.contains(T))return;const kind=T.dataset.ac;
+  if(kind!=="item"&&!T.value.trim()&&stored(T)){const it=gs(T.dataset.sk),i=+T.dataset.i;if(it){if(kind==="c")it.cards[i]="";else if(kind==="e")it.ench[i]="";else it.opts[i]="";it.cards=compact(it.cards);it.ench=compact(it.ench);it.opts=compact(it.opts);save();rr()}return}
+  T.value=stored(T)},120)});
+document.addEventListener("keydown",e=>{const T=e.target;if(!T.classList||!T.classList.contains("ac"))return;
+  if(e.key==="Escape"){T.parentNode.querySelector(".acl").hidden=true;T.blur();return}
+  if(e.key==="Enter"){e.preventDefault();const b=T.parentNode.querySelector(".acl [data-acpick]:not([data-acpick=custom]):not([data-acpick=txt])")||T.parentNode.querySelector(".acl [data-acpick]");if(b)b.click()}});
+document.addEventListener("click",e=>{
+  const P=e.target.closest&&e.target.closest("[data-acpick]");
+  if(P){const w=P.closest(".acw"),inp=w.querySelector(".ac"),k=inp.dataset.sk,kind=P.dataset.acpick,i=+inp.dataset.i,c=mc(),s=curSet(c);
+    if(kind==="item"||kind==="custom"){let d;if(kind==="custom"){const n=inp.value.trim();if(!n)return;d={id:0,n:n,ref:0,gr:"",sl:0,cards:[],ench:[],opts:[]}}else{const r=byId(+P.dataset.id);if(!r)return;d={id:r[0],n:dn(r),ref:0,gr:"",sl:Math.min(4,r[2]),cards:[],ench:[],opts:[]}}
+      M.slot=k;M.draft=d;const id=d.id;applySlot();M.slot=null;M.draft=null;window.scrollTo(0,window.scrollY);
+      if(id)ptName(id,nm=>{const it=gs(k);if(it&&it.id===id&&it.n!==nm){it.n=nm;save();rr()}});return}
+    const it=gs(k);if(!it)return;
+    if(kind==="o"){const arr=it.opts=(it.opts||[]);const v=searchOpt(inp.value)[+P.dataset.j];if(!v)return;arr[i]=v;it.opts=compact(arr);save();rr();return}
+    if(kind==="txt"){const v=inp.value.trim();if(!v)return;it.ench[i]=v;it.ench=compact(it.ench);save();rr();return}
+    const r=byId(+P.dataset.id);if(!r)return;const arr=kind==="c"?it.cards:it.ench;arr[i]=dn(r);const id=r[0],nm0=dn(r);if(kind==="c")it.cards=compact(it.cards);else it.ench=compact(it.ench);save();rr();
+    ptName(id,nm=>{const x=gs(k);if(!x)return;const a2=kind==="c"?x.cards:x.ench,p=a2.indexOf(nm0);if(p>=0&&nm!==nm0){a2[p]=nm;save();rr()}});return}
+  const X=e.target.closest&&e.target.closest("[data-clr=item]");
+  if(X){const k=X.dataset.sk,s=curSet(mc());Object.keys(s.slots).forEach(q=>{if(s.slots[q]&&s.slots[q].lk===k)delete s.slots[q]});delete s.slots[k];save();rr();return}
+  if(!(e.target.closest&&e.target.closest(".acw")))hideAll()});
+document.addEventListener("change",e=>{const T=e.target;if(!T.dataset||!T.dataset.f||!T.dataset.sk)return;const it=gs(T.dataset.sk);if(!it)return;
+  if(T.dataset.f==="ref")it.ref=+T.value;else if(T.dataset.f==="gr")it.gr=T.value;else if(T.dataset.f==="sl"){it.sl=+T.value;it.cards=compact(it.cards).slice(0,it.sl)}
+  save();rr()});
+})();
 /* ===== Conta e sincronização (Supabase) ===== */
 (function(){
 const SB="https://jakjyjgbxphoribvhlgh.supabase.co",PK="sb_publishable_jkozrJIDkdwswE5xz0EljQ_vtZo_jR6",SK="ro-sb-session";
